@@ -1,5 +1,7 @@
 mod model;
 
+use std::error::Error;
+
 use sqlite::{Connection, Result};
 
 fn create_tables(conn: &Connection) -> Result<()> {
@@ -45,8 +47,8 @@ use model::{Employee, EvaluationCriterion, EvaluationScore};
 // Function to insert a new employee into the database
 fn insert_employee(conn: &Connection, employee: &Employee) -> Result<()> {
     conn.execute(
-        format!("INSERT INTO employees (name, department, job_title) VALUES ({}, {}, {})", 
-        &employee.name, &employee.department, &employee.job_title)
+        format!("INSERT INTO employees (name, department, job_title) VALUES ('{}', '{}', '{}')", 
+        employee.name, employee.department, employee.job_title)
     )?;
     Ok(())
 }
@@ -54,7 +56,7 @@ fn insert_employee(conn: &Connection, employee: &Employee) -> Result<()> {
 // Function to insert a new evaluation criterion into the database
 fn insert_evaluation_criterion(conn: &Connection, criterion: &EvaluationCriterion) -> Result<()> {
     conn.execute(
-        format!("INSERT INTO evaluation_criteria (name, description, weightage) VALUES ({}, {}, {})",
+        format!("INSERT INTO evaluation_criteria (name, description, weightage) VALUES ('{}', '{}', {})",
         criterion.name, criterion.description, criterion.weightage)
     )?;
     Ok(())
@@ -123,39 +125,138 @@ fn get_evaluation_scores(conn: &Connection) -> Result<Vec<EvaluationScore>> {
     Ok(scores)
 }
 
-fn main() -> Result<()> {
+fn main() -> std::result::Result<(), Box<dyn Error>> {
     // Connect to the SQLite database
     let conn = Connection::open("employee_performance.db")?;
 
-    // Create tables
+    // Create tables if they don't exist
     create_tables(&conn)?;
 
-    // Insert sample data
-    let employee = Employee {
-        id: 1,
-        name: "John Doe".to_string(),
-        department: "Engineering".to_string(),
-        job_title: "Software Engineer".to_string(),
-    };
-    insert_employee(&conn, &employee)?;
+    println!("Welcome to the Employee Evaluation System");
 
-    let criterion = EvaluationCriterion {
-        id: 1,
-        name: "Quality of Work".to_string(),
-        description: "Ability to produce high-quality work".to_string(),
-        weightage: 0.5,
-    };
-    insert_evaluation_criterion(&conn, &criterion)?;
+    loop {
+        println!("\nMenu:");
+        println!("1. Insert Employee");
+        println!("2. Insert Evaluation Criterion");
+        println!("3. Insert Evaluation Score");
+        println!("4. View Employees");
+        println!("5. View Evaluation Criteria");
+        println!("6. View Evaluation Scores");
+        println!("7. Exit");
 
-    let score = EvaluationScore {
-        id: 1,
-        employee_id: 1,
-        criterion_id: 1,
-        score: 4.5,
-    };
-    insert_evaluation_score(&conn, &score)?;
+        // Read user input
+        println!("Enter your choice:");
+        let mut input = String::new();
+        std::io::stdin().read_line(&mut input)?;
+        let choice: u32 = input.trim().parse().expect("Please enter a valid number");
 
-    println!("Data inserted successfully");
+        match choice {
+            1 => {
+                println!("Enter employee details:");
+                println!("Name:");
+                let mut name = String::new();
+                std::io::stdin().read_line(&mut name)?;
+                let name = name.trim().to_string();
+
+                println!("Department:");
+                let mut department = String::new();
+                std::io::stdin().read_line(&mut department)?;
+                let department = department.trim().to_string();
+
+                println!("Job Title:");
+                let mut job_title = String::new();
+                std::io::stdin().read_line(&mut job_title)?;
+                let job_title = job_title.trim().to_string();
+
+                let employee = Employee {
+                    id: 0, // Assuming the database assigns IDs automatically
+                    name,
+                    department,
+                    job_title,
+                };
+                insert_employee(&conn, &employee)?;
+                println!("Employee inserted successfully");
+            }
+            2 => {
+                println!("Enter evaluation criterion details:");
+                println!("Name:");
+                let mut name = String::new();
+                std::io::stdin().read_line(&mut name)?;
+                let name = name.trim().to_string();
+
+                println!("Description:");
+                let mut description = String::new();
+                std::io::stdin().read_line(&mut description)?;
+                let description = description.trim().to_string();
+
+                println!("Weightage:");
+                let mut weightage_str = String::new();
+                std::io::stdin().read_line(&mut weightage_str)?;
+                let weightage: f64 = weightage_str.trim().parse().expect("Please enter a valid number");
+
+                let criterion = EvaluationCriterion {
+                    id: 0, // Assuming the database assigns IDs automatically
+                    name,
+                    description,
+                    weightage,
+                };
+                insert_evaluation_criterion(&conn, &criterion)?;
+                println!("Evaluation criterion inserted successfully");
+            }
+            3 => {
+                println!("Enter evaluation score details:");
+                println!("Employee ID:");
+                let mut employee_id_str = String::new();
+                std::io::stdin().read_line(&mut employee_id_str)?;
+                let employee_id: i64 = employee_id_str.trim().parse().expect("Please enter a valid number");
+
+                println!("Criterion ID:");
+                let mut criterion_id_str = String::new();
+                std::io::stdin().read_line(&mut criterion_id_str)?;
+                let criterion_id: i64 = criterion_id_str.trim().parse().expect("Please enter a valid number");
+
+                println!("Score:");
+                let mut score_str = String::new();
+                std::io::stdin().read_line(&mut score_str)?;
+                let score: f64 = score_str.trim().parse().expect("Please enter a valid number");
+
+                let score = EvaluationScore {
+                    id: 0, // Assuming the database assigns IDs automatically
+                    employee_id,
+                    criterion_id,
+                    score,
+                };
+                insert_evaluation_score(&conn, &score)?;
+                println!("Evaluation score inserted successfully");
+            }
+            4 => {
+                println!("Employees:");
+                let employees = get_employees(&conn)?;
+                for employee in &employees {
+                    println!("{:?}", employee);
+                }
+            }
+            5 => {
+                println!("Evaluation Criteria:");
+                let criteria = get_evaluation_criteria(&conn)?;
+                for criterion in &criteria {
+                    println!("{:?}", criterion);
+                }
+            }
+            6 => {
+                println!("Evaluation Scores:");
+                let scores = get_evaluation_scores(&conn)?;
+                for score in &scores {
+                    println!("{:?}", score);
+                }
+            }
+            7 => {
+                println!("Exiting...");
+                break;
+            }
+            _ => println!("Invalid choice. Please enter a number between 1 and 7."),
+        }
+    }
 
     Ok(())
 }
